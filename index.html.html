@@ -35,13 +35,13 @@
             <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
         </div>
 
-        <form id="review-form" action="https://formspree.io/f/mqakpneq" method="POST" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
+        <form id="review-form" action="https://formspree.io/f/mjgzzwwz" method="POST" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
             <div class="space-y-8">
                 
                 <!-- Avatar Preview -->
                 <div class="flex items-center gap-6 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
                     <<!-- Change your img tag to look exactly like this -->
-<img id="avatar-preview" referrerpolicy="no-referrer" src="https://tr.rbxcdn.com/30day/150/150/AvatarHeadshot/Png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10">
+    <img id="avatar-preview" referrerpolicy="no-referrer" src="https://tr.rbxcdn.com/30day/150/150/AvatarHeadshot/Png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10">
                     <div>
                         <p class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Visual Identity</p>
                         <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Info...</h3>
@@ -100,25 +100,31 @@
 <script>
     lucide.createIcons();
 
-    // THIS IS THE FIX: Using wsrv.nl to proxy the image
-    function updatePfp(userId) {
+    // FIXED: Modern way to fetch Roblox thumbnails reliably
+    async function updatePfp(userId) {
         if (!userId) return;
         
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        // 1. The Roblox URL
-        const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
-        
-        // 2. We wrap it in the 'wsrv.nl' proxy to bypass the block
-        // This 'washes' the request so Roblox doesn't block it.
-        const proxiedUrl = `https://wsrv.nl/?url=${encodeURIComponent(robloxUrl)}&nocache`;
+        try {
+            // Fetch the real image URL from Roblox's Thumbnail API via a proxy
+            const apiUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+            
+            const response = await fetch(proxyUrl);
+            const rawData = await response.json();
+            const data = JSON.parse(rawData.contents);
 
-        previewImg.src = proxiedUrl;
-        
-        status.innerText = "Identity Verified";
-        status.classList.remove('text-gray-300');
-        status.classList.add('text-brand');
+            if (data.data && data.data[0] && data.data[0].imageUrl) {
+                previewImg.src = data.data[0].imageUrl;
+                status.innerText = "Identity Verified";
+                status.classList.remove('text-gray-300');
+                status.classList.add('text-brand');
+            }
+        } catch (e) {
+            console.error("Failed to load avatar:", e);
+        }
     }
 
     // Extract ID from Profile Link
@@ -171,10 +177,11 @@
     }
     setTimeout(() => setRating(0), 100);
 
-    // --- Form Submission ---
+    // --- Form Submission Fix ---
     const form = document.getElementById('review-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
         const starsValue = document.getElementById('stars-value').value;
         if (!starsValue || starsValue === "0") {
             alert("Please select a star rating!");
@@ -182,7 +189,9 @@
         }
 
         const btn = document.getElementById('submit-btn');
-        btn.innerText = "Sending...";
+        const originalText = btn.innerText;
+        btn.innerText = "SENDING...";
+        btn.disabled = true;
         
         try {
             const response = await fetch(form.action, {
@@ -195,12 +204,17 @@
                 form.classList.add('hidden');
                 document.getElementById('success-msg').classList.remove('hidden');
             } else {
-                alert("Submission failed.");
-                btn.innerText = "Submit Review";
+                const errorData = await response.json();
+                console.error("Formspree Error:", errorData);
+                alert("Submission failed. Error: " + (errorData.error || "Unknown error"));
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         } catch (error) {
-            alert("An error occurred.");
-            btn.innerText = "Submit Review";
+            console.error("Network Error:", error);
+            alert("A network error occurred. Please check your internet or disable ad-blockers.");
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
     });
 </script>
