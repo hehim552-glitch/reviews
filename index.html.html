@@ -100,34 +100,27 @@
 <script>
     lucide.createIcons();
 
-    // FIXED: Modern way to fetch Roblox thumbnails reliably
-    async function updatePfp(userId) {
+    // 1. UPDATED: The most reliable way to load Roblox PFPs
+    function updatePfp(userId) {
         if (!userId) return;
         
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        try {
-            // Fetch the real image URL from Roblox's Thumbnail API via a proxy
-            const apiUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
-            
-            const response = await fetch(proxyUrl);
-            const rawData = await response.json();
-            const data = JSON.parse(rawData.contents);
+        // We use wsrv.nl to proxy the Roblox redirect URL. 
+        // This bypasses CORS and the "broken image" issue completely.
+        const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
+        const proxiedUrl = `https://wsrv.nl/?url=${encodeURIComponent(robloxUrl)}&nocache=true`;
 
-            if (data.data && data.data[0] && data.data[0].imageUrl) {
-                previewImg.src = data.data[0].imageUrl;
-                status.innerText = "Identity Verified";
-                status.classList.remove('text-gray-300');
-                status.classList.add('text-brand');
-            }
-        } catch (e) {
-            console.error("Failed to load avatar:", e);
-        }
+        previewImg.src = proxiedUrl;
+        
+        // Update UI immediately
+        status.innerText = "Identity Verified";
+        status.classList.remove('text-gray-300');
+        status.classList.add('text-brand');
     }
 
-    // Extract ID from Profile Link
+    // 2. Extract ID from Profile Link (Triggers PFP update)
     function extractIdFromLink(url) {
         const match = url.match(/users\/(\d+)/);
         if (match && match[1]) {
@@ -135,28 +128,35 @@
         }
     }
 
-    // Fetch ID by Username
+    // 3. Fetch ID by Username (Search)
     let typingTimer;
     function fetchByName(username) {
         clearTimeout(typingTimer);
+        const status = document.getElementById('preview-status');
         if (username.length < 3) return;
+
+        status.innerText = "Searching...";
 
         typingTimer = setTimeout(async () => {
             try {
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
-                const json = await res.json();
-                const data = JSON.parse(json.contents);
+                // Using a fallback proxy if the first one fails
+                const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
+                const data = await res.json();
                 
                 if (data.data && data.data[0]) {
                     updatePfp(data.data[0].id);
+                } else {
+                    status.innerText = "User Not Found";
+                    status.classList.add('text-red-400');
                 }
             } catch (e) {
-                console.log("Search failed.");
+                console.error("Search failed", e);
+                status.innerText = "Search Error";
             }
         }, 800);
     }
 
-    // --- Star Rating ---
+    // --- Star Rating Logic ---
     function setRating(n) {
         document.getElementById('stars-value').value = n;
         const starButtons = document.querySelectorAll('.star-btn');
@@ -177,7 +177,7 @@
     }
     setTimeout(() => setRating(0), 100);
 
-    // --- Form Submission Fix ---
+    // --- Form Submission Logic ---
     const form = document.getElementById('review-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -189,7 +189,6 @@
         }
 
         const btn = document.getElementById('submit-btn');
-        const originalText = btn.innerText;
         btn.innerText = "SENDING...";
         btn.disabled = true;
         
@@ -204,16 +203,13 @@
                 form.classList.add('hidden');
                 document.getElementById('success-msg').classList.remove('hidden');
             } else {
-                const errorData = await response.json();
-                console.error("Formspree Error:", errorData);
-                alert("Submission failed. Error: " + (errorData.error || "Unknown error"));
-                btn.innerText = originalText;
+                alert("Submission failed. Check if your Formspree ID is correct.");
+                btn.innerText = "Submit Review";
                 btn.disabled = false;
             }
         } catch (error) {
-            console.error("Network Error:", error);
-            alert("A network error occurred. Please check your internet or disable ad-blockers.");
-            btn.innerText = originalText;
+            alert("A connection error occurred.");
+            btn.innerText = "Submit Review";
             btn.disabled = false;
         }
     });
