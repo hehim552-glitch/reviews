@@ -96,99 +96,114 @@
         </div>
     </div>
 
-    <script>
-        lucide.createIcons();
+<script>
+    lucide.createIcons();
 
-        function setRating(n) {
-            document.getElementById('stars-value').value = n;
-            const starButtons = document.querySelectorAll('.star-btn');
-            starButtons.forEach((btn, index) => {
-                const icon = btn.querySelector('svg');
-                if (icon) {
-                    if (index < n) {
-                        icon.setAttribute('fill', '#ffb800');
-                        icon.setAttribute('stroke', '#ffb800');
-                        icon.style.color = '#ffb800';
-                    } else {
-                        icon.setAttribute('fill', 'none');
-                        icon.setAttribute('stroke', '#333');
-                        icon.style.color = '#333';
-                    }
-                }
-            });
-        }
+    // 1. Updated function to fetch the official Image URL
+    async function updatePfp(userId) {
+        const previewImg = document.getElementById('avatar-preview');
+        const status = document.getElementById('preview-status');
         
-        // Initialize stars to 0 (gray) on load
-        setTimeout(() => setRating(0), 100);
+        try {
+            // Using the official Roblox Thumbnail API
+            const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
+            const data = await response.json();
 
-        function updatePfp(userId) {
-            const previewImg = document.getElementById('avatar-preview');
-            const status = document.getElementById('preview-status');
-            previewImg.src = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
-            status.innerText = "Identity Verified";
-            status.classList.add('text-brand');
-        }
-
-        function extractIdFromLink(url) {
-            const match = url.match(/users\/(\d+)/);
-            if (match && match[1]) {
-                updatePfp(match[1]);
+            if (data.data && data.data[0]) {
+                previewImg.src = data.data[0].imageUrl;
+                status.innerText = "Identity Verified";
+                status.classList.add('text-brand');
             }
+        } catch (error) {
+            console.error("Error fetching thumbnail:", error);
+            status.innerText = "Error loading photo";
         }
+    }
 
-        let typingTimer;
-        function fetchByName(username) {
-            clearTimeout(typingTimer);
-            if (username.length < 3) return;
-
-            typingTimer = setTimeout(async () => {
-                try {
-                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
-                    const json = await res.json();
-                    const data = JSON.parse(json.contents);
-                    
-                    if (data.data && data.data[0]) {
-                        updatePfp(data.data[0].id);
-                    }
-                } catch (e) {
-                    document.getElementById('preview-status').innerText = "Paste link for photo";
-                }
-            }, 800);
+    // 2. Extract ID from the Profile Link
+    function extractIdFromLink(url) {
+        const match = url.match(/users\/(\d+)/);
+        if (match && match[1]) {
+            updatePfp(match[1]);
         }
+    }
 
-        const form = document.getElementById('review-form');
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    // 3. Fetch ID by Username (Improved)
+    let typingTimer;
+    function fetchByName(username) {
+        clearTimeout(typingTimer);
+        if (username.length < 3) return;
 
-            // Check if star rating is selected
-            const starsValue = document.getElementById('stars-value').value;
-            if (!starsValue || starsValue === "0") {
-                alert("Please select a star rating before submitting!");
-                return;
-            }
-
-            const btn = document.getElementById('submit-btn');
-            btn.innerText = "Sending...";
-            
+        typingTimer = setTimeout(async () => {
             try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    body: new FormData(form),
-                    headers: { 'Accept': 'application/json' }
-                });
-
-                if (response.ok) {
-                    form.classList.add('hidden');
-                    document.getElementById('success-msg').classList.remove('hidden');
-                } else {
-                    alert("Submission failed.");
-                    btn.innerText = "Submit Review";
+                // Using a proxy to bypass CORS for the user search API
+                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
+                const json = await res.json();
+                const data = JSON.parse(json.contents);
+                
+                if (data.data && data.data[0]) {
+                    updatePfp(data.data[0].id);
                 }
-            } catch (error) {
-                alert("An error occurred. Please try again.");
-                btn.innerText = "Submit Review";
+            } catch (e) {
+                document.getElementById('preview-status').innerText = "User not found";
+            }
+        }, 800);
+    }
+
+    // --- Star Rating Logic ---
+    function setRating(n) {
+        document.getElementById('stars-value').value = n;
+        const starButtons = document.querySelectorAll('.star-btn');
+        starButtons.forEach((btn, index) => {
+            const icon = btn.querySelector('svg');
+            if (icon) {
+                if (index < n) {
+                    icon.setAttribute('fill', '#ffb800');
+                    icon.setAttribute('stroke', '#ffb800');
+                    icon.style.color = '#ffb800';
+                } else {
+                    icon.setAttribute('fill', 'none');
+                    icon.setAttribute('stroke', '#333');
+                    icon.style.color = '#333';
+                }
             }
         });
-    </script>
+    }
+    
+    setTimeout(() => setRating(0), 100);
+
+    // --- Form Submission Logic ---
+    const form = document.getElementById('review-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const starsValue = document.getElementById('stars-value').value;
+        if (!starsValue || starsValue === "0") {
+            alert("Please select a star rating!");
+            return;
+        }
+
+        const btn = document.getElementById('submit-btn');
+        btn.innerText = "Sending...";
+        
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.ok) {
+                form.classList.add('hidden');
+                document.getElementById('success-msg').classList.remove('hidden');
+            } else {
+                alert("Submission failed.");
+                btn.innerText = "Submit Review";
+            }
+        } catch (error) {
+            alert("An error occurred.");
+            btn.innerText = "Submit Review";
+        }
+    });
+</script>
 </body>
 </html>
