@@ -100,52 +100,39 @@
     lucide.createIcons();
 
     // 1. The Direct Approach (Fixed to avoid security blocks)
-    function updatePfp(userId) {
+async function updatePfp(userId) {
         if (!userId) return;
         
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        // We set the source DIRECTLY. Browsers allow this, but they block 'fetch'.
-        // This is the most reliable URL for Roblox headshots.
-        const imageUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
-        
-        previewImg.src = imageUrl;
-        status.innerText = "Identity Verified";
-        status.classList.remove('text-gray-300');
-        status.classList.add('text-brand');
-    }
+        // Show a loading state while we fetch
+        status.innerText = "Fetching photo...";
 
-    // 2. Extract ID from the Profile Link
-    function extractIdFromLink(url) {
-        const match = url.match(/users\/(\d+)/);
-        if (match && match[1]) {
-            updatePfp(match[1]);
+        try {
+            // We use the proxy to talk to the official Roblox Thumbnail API
+            const thumbApi = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(thumbApi)}`;
+            
+            const res = await fetch(proxyUrl);
+            const json = await res.json();
+            const data = JSON.parse(json.contents);
+            
+            if (data.data && data.data[0]) {
+                // Now we have the ACTUAL image link that Roblox allows us to see
+                previewImg.src = data.data[0].imageUrl;
+                
+                status.innerText = "Identity Verified";
+                status.classList.remove('text-gray-300');
+                status.classList.add('text-brand');
+            } else {
+                status.innerText = "User not found";
+            }
+        } catch (error) {
+            console.error(error);
+            status.innerText = "Error loading photo";
         }
     }
-
-    // 3. Fetch ID by Username (Using a proxy to bypass blocks)
-    let typingTimer;
-    function fetchByName(username) {
-        clearTimeout(typingTimer);
-        if (username.length < 3) return;
-
-        typingTimer = setTimeout(async () => {
-            try {
-                // We use AllOrigins proxy because Roblox blocks direct 'search' requests from browsers
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
-                const json = await res.json();
-                const data = JSON.parse(json.contents);
-                
-                if (data.data && data.data[0]) {
-                    updatePfp(data.data[0].id);
-                }
-            } catch (e) {
-                console.log("Username search failed, try pasting link instead.");
-            }
-        }, 800);
-    }
-
     // --- Star Rating Logic ---
     function setRating(n) {
         document.getElementById('stars-value').value = n;
