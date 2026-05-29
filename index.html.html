@@ -10,21 +10,13 @@
     <script>
         tailwind.config = { 
             darkMode: 'class', 
-            theme: { 
-                extend: { 
-                    colors: { 
-                        brand: { DEFAULT: '#0099ff', dark: '#007acc', light: '#33adff' },
-                        darker: '#050505'
-                    }
-                } 
-            } 
+            theme: { extend: { colors: { brand: { DEFAULT: '#0099ff', dark: '#007acc', light: '#33adff' }, darker: '#050505' } } } 
         }
     </script>
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; background-image: radial-gradient(circle at 0% 0%, rgba(0, 153, 255, 0.08) 0%, transparent 25%); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; }
         .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .star-active { color: #ffb800 !important; fill: #ffb800 !important; }
-        .star-inactive { color: #333 !important; fill: transparent !important; }
+        .star-btn svg { width: 24px; height: 24px; transition: all 0.2s; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen px-4 py-12">
@@ -35,23 +27,31 @@
             <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
         </div>
 
-        <form id="review-form" action="https://formspree.io/f/mjgzzwwz" method="POST" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
+        <!-- Update form to allow file uploads (enctype) -->
+        <form id="review-form" action="https://formspree.io/f/mqakpneq" method="POST" enctype="multipart/form-data" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
             <div class="space-y-8">
                 
-                <!-- Avatar Preview -->
+                <!-- Avatar Preview & Manual Upload -->
                 <div class="flex items-center gap-6 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
-                    <<!-- Change your img tag to look exactly like this -->
-    <img id="avatar-preview" referrerpolicy="no-referrer" src="https://tr.rbxcdn.com/30day/150/150/AvatarHeadshot/Png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10">
+                    <div class="relative group">
+                        <img id="avatar-preview" src="https://i.imgur.com/3Z6nZfR.png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10 object-cover">
+                        <!-- Manual Upload Overlay -->
+                        <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                            <i data-lucide="camera" class="w-6 h-6 text-white"></i>
+                            <input type="file" name="manual_avatar" accept="image/*" class="hidden" onchange="handleManualUpload(this)">
+                        </label>
+                    </div>
                     <div>
                         <p class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Visual Identity</p>
                         <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Info...</h3>
+                        <p class="text-[10px] text-gray-500 italic">Auto-fetches from ID, or click image to upload manually</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Roblox Username</label>
-                        <input type="text" name="username" id="username" oninput="fetchByName(this.value)" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand">
+                        <input type="text" name="username" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                     </div>
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Project Type</label>
@@ -63,8 +63,8 @@
                 </div>
 
                 <div class="space-y-2">
-                    <label class="text-xs font-bold uppercase text-gray-400">Profile Link (Paste this for instant photo)</label>
-                    <input type="url" name="profile_link" id="roblox-link" oninput="extractIdFromLink(this.value)" placeholder="https://www.roblox.com/users/4091549721/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                    <label class="text-xs font-bold uppercase text-gray-400">Profile Link (Paste for instant photo)</label>
+                    <input type="url" name="profile_link" id="roblox-link" oninput="extractIdFromLink(this.value)" placeholder="https://www.roblox.com/users/4091549721/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand">
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
@@ -77,8 +77,7 @@
                             <button type="button" onclick="setRating(4)" class="star-btn"><i data-lucide="star"></i></button>
                             <button type="button" onclick="setRating(5)" class="star-btn"><i data-lucide="star"></i></button>
                         </div>
-                        <!-- Hidden input is now empty by default -->
-                        <input type="hidden" name="stars" id="stars-value" value="">
+                        <input type="hidden" name="stars" id="stars-value" value="0">
                     </div>
                     <input type="text" name="discord" placeholder="Discord Tag" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none">
                 </div>
@@ -100,63 +99,40 @@
 <script>
     lucide.createIcons();
 
-    // 1. UPDATED: The most reliable way to load Roblox PFPs
+    // 1. IMPROVED AUTO-FETCH (Using Weserv Proxy - much stronger)
     function updatePfp(userId) {
         if (!userId) return;
-        
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        // We use wsrv.nl to proxy the Roblox redirect URL. 
-        // This bypasses CORS and the "broken image" issue completely.
+        // This proxy service usually bypasses Roblox's restrictions
         const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
-        const proxiedUrl = `https://wsrv.nl/?url=${encodeURIComponent(robloxUrl)}&nocache=true`;
+        const finalUrl = `https://images.weserv.nl/?url=${encodeURIComponent(robloxUrl)}&noprocess`;
 
-        previewImg.src = proxiedUrl;
-        
-        // Update UI immediately
+        previewImg.src = finalUrl;
         status.innerText = "Identity Verified";
-        status.classList.remove('text-gray-300');
-        status.classList.add('text-brand');
+        status.className = "text-lg font-bold text-brand";
     }
 
-    // 2. Extract ID from Profile Link (Triggers PFP update)
-    function extractIdFromLink(url) {
-        const match = url.match(/users\/(\d+)/);
-        if (match && match[1]) {
-            updatePfp(match[1]);
+    // 2. MANUAL UPLOAD HANDLER (The "Other Way")
+    function handleManualUpload(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('avatar-preview').src = e.target.result;
+                const status = document.getElementById('preview-status');
+                status.innerText = "Manual Photo Added";
+                status.className = "text-lg font-bold text-brand";
+            };
+            reader.readAsDataURL(input.files[0]);
         }
     }
 
-    // 3. Fetch ID by Username (Search)
-    let typingTimer;
-    function fetchByName(username) {
-        clearTimeout(typingTimer);
-        const status = document.getElementById('preview-status');
-        if (username.length < 3) return;
-
-        status.innerText = "Searching...";
-
-        typingTimer = setTimeout(async () => {
-            try {
-                // Using a fallback proxy if the first one fails
-                const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
-                const data = await res.json();
-                
-                if (data.data && data.data[0]) {
-                    updatePfp(data.data[0].id);
-                } else {
-                    status.innerText = "User Not Found";
-                    status.classList.add('text-red-400');
-                }
-            } catch (e) {
-                console.error("Search failed", e);
-                status.innerText = "Search Error";
-            }
-        }, 800);
+    function extractIdFromLink(url) {
+        const match = url.match(/users\/(\d+)/);
+        if (match && match[1]) updatePfp(match[1]);
     }
 
-    // --- Star Rating Logic ---
     function setRating(n) {
         document.getElementById('stars-value').value = n;
         const starButtons = document.querySelectorAll('.star-btn');
@@ -164,34 +140,28 @@
             const icon = btn.querySelector('svg');
             if (icon) {
                 if (index < n) {
-                    icon.setAttribute('fill', '#ffb800');
-                    icon.setAttribute('stroke', '#ffb800');
-                    icon.style.color = '#ffb800';
+                    icon.style.fill = "#ffb800";
+                    icon.style.stroke = "#ffb800";
                 } else {
-                    icon.setAttribute('fill', 'none');
-                    icon.setAttribute('stroke', '#333');
-                    icon.style.color = '#333';
+                    icon.style.fill = "transparent";
+                    icon.style.stroke = "#333";
                 }
             }
         });
     }
-    setTimeout(() => setRating(0), 100);
 
-    // --- Form Submission Logic ---
+    // --- SUBMISSION FIX ---
     const form = document.getElementById('review-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const starsValue = document.getElementById('stars-value').value;
-        if (!starsValue || starsValue === "0") {
-            alert("Please select a star rating!");
-            return;
-        }
-
         const btn = document.getElementById('submit-btn');
+        const stars = document.getElementById('stars-value').value;
+
+        if (stars === "0") { alert("Please select a star rating!"); return; }
+
         btn.innerText = "SENDING...";
         btn.disabled = true;
-        
+
         try {
             const response = await fetch(form.action, {
                 method: 'POST',
@@ -203,12 +173,15 @@
                 form.classList.add('hidden');
                 document.getElementById('success-msg').classList.remove('hidden');
             } else {
-                alert("Submission failed. Check if your Formspree ID is correct.");
+                const result = await response.json();
+                console.error("Formspree error:", result);
+                alert("Submission failed: " + (result.errors ? result.errors[0].message : "Check your Formspree ID"));
                 btn.innerText = "Submit Review";
                 btn.disabled = false;
             }
         } catch (error) {
-            alert("A connection error occurred.");
+            console.error("Network error:", error);
+            alert("A network error occurred. Ensure your Formspree form is 'Active' in their dashboard.");
             btn.innerText = "Submit Review";
             btn.disabled = false;
         }
