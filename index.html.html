@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Review | Azero GFX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = { 
+            darkMode: 'class', 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        brand: { DEFAULT: '#0099ff', dark: '#007acc', light: '#33adff' },
+                        darker: '#050505'
+                    }
+                } 
+            } 
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; background-image: radial-gradient(circle at 0% 0%, rgba(0, 153, 255, 0.08) 0%, transparent 25%); }
+        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .star-active { color: #ffb800 !important; fill: #ffb800 !important; }
+        .star-inactive { color: #333 !important; fill: transparent !important; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen px-4 py-12">
+
+    <div class="max-w-2xl w-full">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold tracking-tight">Leave a <span class="text-brand">Review</span></h1>
+            <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
+        </div>
+
+        <form id="review-form" action="https://formspree.io/f/mqakpneq" method="POST" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
+            <div class="space-y-8">
+                
+                <!-- Avatar Preview -->
+                <div class="flex items-center gap-6 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
+                    <img id="avatar-preview" src="https://tr.rbxcdn.com/30day/150/150/AvatarHeadshot/Png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10">
+                    <div>
+                        <p class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Visual Identity</p>
+                        <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Info...</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold uppercase text-gray-400">Roblox Username</label>
+                        <input type="text" name="username" id="username" oninput="fetchByName(this.value)" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold uppercase text-gray-400">Project Type</label>
+                        <select name="type" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none">
+                            <option>Realistic Style</option>
+                            <option>High CCU Style</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold uppercase text-gray-400">Profile Link (Paste this for instant photo)</label>
+                    <input type="url" name="profile_link" id="roblox-link" oninput="extractIdFromLink(this.value)" placeholder="https://www.roblox.com/users/4091549721/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div class="space-y-3">
+                        <label class="text-xs font-bold uppercase text-gray-400">Star Rating</label>
+                        <div id="star-container" class="flex gap-2">
+                            <button type="button" onclick="setRating(1)" class="star-btn"><i data-lucide="star"></i></button>
+                            <button type="button" onclick="setRating(2)" class="star-btn"><i data-lucide="star"></i></button>
+                            <button type="button" onclick="setRating(3)" class="star-btn"><i data-lucide="star"></i></button>
+                            <button type="button" onclick="setRating(4)" class="star-btn"><i data-lucide="star"></i></button>
+                            <button type="button" onclick="setRating(5)" class="star-btn"><i data-lucide="star"></i></button>
+                        </div>
+                        <!-- Hidden input is now empty by default -->
+                        <input type="hidden" name="stars" id="stars-value" value="">
+                    </div>
+                    <input type="text" name="discord" placeholder="Discord Tag" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none">
+                </div>
+
+                <textarea name="message" rows="4" placeholder="Your Experience..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none resize-none" required></textarea>
+
+                <button type="submit" id="submit-btn" class="w-full bg-brand py-5 rounded-2xl font-bold uppercase tracking-widest hover:bg-brand-light transition-all shadow-lg shadow-brand/20">
+                    Submit Review
+                </button>
+            </div>
+        </form>
+
+        <div id="success-msg" class="hidden text-center mt-10 p-10 glass rounded-[2.5rem]">
+            <h2 class="text-3xl font-bold">Review Sent!</h2>
+            <p class="text-gray-400 mt-2">Check your email moderation dashboard.</p>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function setRating(n) {
+            document.getElementById('stars-value').value = n;
+            const starButtons = document.querySelectorAll('.star-btn');
+            starButtons.forEach((btn, index) => {
+                const icon = btn.querySelector('svg');
+                if (icon) {
+                    if (index < n) {
+                        icon.setAttribute('fill', '#ffb800');
+                        icon.setAttribute('stroke', '#ffb800');
+                        icon.style.color = '#ffb800';
+                    } else {
+                        icon.setAttribute('fill', 'none');
+                        icon.setAttribute('stroke', '#333');
+                        icon.style.color = '#333';
+                    }
+                }
+            });
+        }
+        
+        // Initialize stars to 0 (gray) on load
+        setTimeout(() => setRating(0), 100);
+
+        function updatePfp(userId) {
+            const previewImg = document.getElementById('avatar-preview');
+            const status = document.getElementById('preview-status');
+            previewImg.src = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
+            status.innerText = "Identity Verified";
+            status.classList.add('text-brand');
+        }
+
+        function extractIdFromLink(url) {
+            const match = url.match(/users\/(\d+)/);
+            if (match && match[1]) {
+                updatePfp(match[1]);
+            }
+        }
+
+        let typingTimer;
+        function fetchByName(username) {
+            clearTimeout(typingTimer);
+            if (username.length < 3) return;
+
+            typingTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
+                    const json = await res.json();
+                    const data = JSON.parse(json.contents);
+                    
+                    if (data.data && data.data[0]) {
+                        updatePfp(data.data[0].id);
+                    }
+                } catch (e) {
+                    document.getElementById('preview-status').innerText = "Paste link for photo";
+                }
+            }, 800);
+        }
+
+        const form = document.getElementById('review-form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Check if star rating is selected
+            const starsValue = document.getElementById('stars-value').value;
+            if (!starsValue || starsValue === "0") {
+                alert("Please select a star rating before submitting!");
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Sending...";
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.ok) {
+                    form.classList.add('hidden');
+                    document.getElementById('success-msg').classList.remove('hidden');
+                } else {
+                    alert("Submission failed.");
+                    btn.innerText = "Submit Review";
+                }
+            } catch (error) {
+                alert("An error occurred. Please try again.");
+                btn.innerText = "Submit Review";
+            }
+        });
+    </script>
+</body>
+</html>
