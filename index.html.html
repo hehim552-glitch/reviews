@@ -40,7 +40,8 @@
                 
                 <!-- Avatar Preview -->
                 <div class="flex items-center gap-6 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
-                    <img id="avatar-preview" src="https://tr.rbxcdn.com/30day/150/150/AvatarHeadshot/Png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10">
+                    <<!-- Change your img tag to look exactly like this -->
+<img id="avatar-preview" referrerpolicy="no-referrer" src="https://tr.rbxcdn.com/30day/150/150/AvatarHeadshot/Png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10">
                     <div>
                         <p class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Visual Identity</p>
                         <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Info...</h3>
@@ -99,41 +100,57 @@
 <script>
     lucide.createIcons();
 
-    // 1. The Direct Approach (Fixed to avoid security blocks)
-async function updatePfp(userId) {
+    // THIS IS THE FIX: Using wsrv.nl to proxy the image
+    function updatePfp(userId) {
         if (!userId) return;
         
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        // Show a loading state while we fetch
-        status.innerText = "Fetching photo...";
+        // 1. The Roblox URL
+        const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
+        
+        // 2. We wrap it in the 'wsrv.nl' proxy to bypass the block
+        // This 'washes' the request so Roblox doesn't block it.
+        const proxiedUrl = `https://wsrv.nl/?url=${encodeURIComponent(robloxUrl)}&nocache`;
 
-        try {
-            // We use the proxy to talk to the official Roblox Thumbnail API
-            const thumbApi = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(thumbApi)}`;
-            
-            const res = await fetch(proxyUrl);
-            const json = await res.json();
-            const data = JSON.parse(json.contents);
-            
-            if (data.data && data.data[0]) {
-                // Now we have the ACTUAL image link that Roblox allows us to see
-                previewImg.src = data.data[0].imageUrl;
-                
-                status.innerText = "Identity Verified";
-                status.classList.remove('text-gray-300');
-                status.classList.add('text-brand');
-            } else {
-                status.innerText = "User not found";
-            }
-        } catch (error) {
-            console.error(error);
-            status.innerText = "Error loading photo";
+        previewImg.src = proxiedUrl;
+        
+        status.innerText = "Identity Verified";
+        status.classList.remove('text-gray-300');
+        status.classList.add('text-brand');
+    }
+
+    // Extract ID from Profile Link
+    function extractIdFromLink(url) {
+        const match = url.match(/users\/(\d+)/);
+        if (match && match[1]) {
+            updatePfp(match[1]);
         }
     }
-    // --- Star Rating Logic ---
+
+    // Fetch ID by Username
+    let typingTimer;
+    function fetchByName(username) {
+        clearTimeout(typingTimer);
+        if (username.length < 3) return;
+
+        typingTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://users.roblox.com/v1/users/search?keyword=' + username + '&limit=1')}`);
+                const json = await res.json();
+                const data = JSON.parse(json.contents);
+                
+                if (data.data && data.data[0]) {
+                    updatePfp(data.data[0].id);
+                }
+            } catch (e) {
+                console.log("Search failed.");
+            }
+        }, 800);
+    }
+
+    // --- Star Rating ---
     function setRating(n) {
         document.getElementById('stars-value').value = n;
         const starButtons = document.querySelectorAll('.star-btn');
@@ -152,7 +169,6 @@ async function updatePfp(userId) {
             }
         });
     }
-    
     setTimeout(() => setRating(0), 100);
 
     // --- Form Submission ---
