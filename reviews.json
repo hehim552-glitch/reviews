@@ -1,20 +1,3 @@
 [
-  {
-    "username": "ClientOne",
-    "message": "Amazing work, fast delivery, and the render looked perfect.",
-    "stars": 5,
-    "date": "2026-05-31"
-  },
-  {
-    "username": "ClientTwo",
-    "message": "The thumbnail came out really clean. Definitely ordering again.",
-    "stars": 5,
-    "date": "2026-05-31"
-  },
-  {
-    "username": "ClientThree",
-    "message": "Great communication and high quality Roblox GFX.",
-    "stars": 5,
-    "date": "2026-05-31"
-  }
+
 ]
