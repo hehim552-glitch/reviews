@@ -152,41 +152,42 @@
     }
 
     // --- SUBMISSION FIX ---
-    const form = document.getElementById('review-form');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('submit-btn');
-        const stars = document.getElementById('stars-value').value;
+ const form = document.getElementById('review-form');
 
-        if (stars === "0") { alert("Please select a star rating!"); return; }
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const stars = document.getElementById('stars-value').value;
 
-        btn.innerText = "SENDING...";
-        btn.disabled = true;
+    if (stars === "0") { alert("Please select a star rating!"); return; }
 
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json' }
-            });
+    btn.innerText = "SENDING...";
+    btn.disabled = true;
 
-            if (response.ok) {
-                form.classList.add('hidden');
-                document.getElementById('success-msg').classList.remove('hidden');
-            } else {
-                const result = await response.json();
-                console.error("Formspree error:", result);
-                alert("Submission failed: " + (result.errors ? result.errors[0].message : "Check your Formspree ID"));
-                btn.innerText = "Submit Review";
-                btn.disabled = false;
-            }
-        } catch (error) {
-            console.error("Network error:", error);
-            alert("A network error occurred. Ensure your Formspree form is 'Active' in their dashboard.");
+    // Use the URL from your HTML action attribute
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form)
+            // Removed the Formspree "Accept" header
+        });
+
+        // Pipedream returns a success even if it's a simple trigger
+        if (response.ok) {
+            form.classList.add('hidden');
+            document.getElementById('success-msg').classList.remove('hidden');
+        } else {
+            alert("Submission failed. Please check your Pipedream Trigger URL.");
             btn.innerText = "Submit Review";
             btn.disabled = false;
         }
-    });
+    } catch (error) {
+        console.error("Network error:", error);
+        alert("A network error occurred. Make sure your Pipedream workflow is 'Deployed'.");
+        btn.innerText = "Submit Review";
+        btn.disabled = false;
+    }
+});
 </script>
 </body>
 </html>
