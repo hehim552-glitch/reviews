@@ -99,14 +99,16 @@
 <script>
     lucide.createIcons();
 
-    // THIS IS THE NEW DISCORD FUNCTION
+// NEW & BETTER DISCORD PFP FETCH
     function updatePfp(discordId) {
         if (!discordId || discordId.length < 15) return; 
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        // Use unavatar for Discord
-        previewImg.src = `https://unavatar.io/discord/${discordId}`;
+        // We are using a more reliable Discord-specific API proxy
+        const newPfpUrl = `https://discord-pfp-api.vercel.app/api/u/${discordId}?size=128`;
+        
+        previewImg.src = newPfpUrl;
         
         previewImg.onload = function() {
             status.innerText = "Discord PFP Linked";
@@ -114,8 +116,9 @@
         };
 
         previewImg.onerror = function() {
-            status.innerText = "Invalid Discord ID";
-            status.className = "text-lg font-bold text-red-500";
+            // Fallback if the ID is totally wrong
+            status.innerText = "Searching Discord...";
+            status.className = "text-lg font-bold text-gray-400";
         };
     }
 
