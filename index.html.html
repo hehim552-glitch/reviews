@@ -108,31 +108,30 @@ async function updatePfp(discordId) {
         status.className = "text-lg font-bold text-gray-400";
 
         try {
-            // Using a high-speed Discord lookup API
-            const response = await fetch(`https://api.lanyard.rest/v1/users/${discordId}`);
+            // API 1: Mesalytic (The best public scraper)
+            const response = await fetch(`https://discordlookup.mesalytic.org/v1/user/${discordId}`);
             const data = await response.json();
 
-            if (data.success && data.data.discord_user.avatar) {
-                const user = data.data.discord_user;
-                // Build the official Discord CDN link
-                const pfp = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`;
-                
-                previewImg.src = pfp;
+            if (data.avatar && data.avatar.url) {
+                // SUCCESS: We found your real Discord photo
+                previewImg.src = data.avatar.url;
                 status.innerText = "Discord PFP Linked";
                 status.className = "text-lg font-bold text-brand";
-            } else if (data.success && !data.data.discord_user.avatar) {
-                // If they have no custom PFP, use the default Discord one
-                const defaultPfp = (data.data.discord_user.discriminator % 5);
-                previewImg.src = `https://cdn.discordapp.com/embed/avatars/${defaultPfp}.png`;
-                status.innerText = "Default PFP Found";
             } else {
-                throw new Error("User not found");
+                throw new Error("PFP not public");
             }
         } catch (error) {
-            // If the ID is wrong or Discord is blocking us, show their Roblox name initials
-            const name = document.getElementsByName('username')[0].value || 'User';
-            previewImg.src = `https://ui-avatars.com/api/?name=${name}&background=0099ff&color=fff`;
-            status.innerText = "Profile Found";
+            // API 2: Backup Fallback (Unavatar)
+            previewImg.src = `https://unavatar.io/discord/${discordId}`;
+            
+            // Final check: If it's still failing, show a better looking GFX placeholder
+            previewImg.onerror = function() {
+                const name = document.getElementsByName('username')[0].value || 'A';
+                previewImg.src = `https://ui-avatars.com/api/?name=${name}&background=0099ff&color=fff&size=128`;
+                status.innerText = "Discord ID Added";
+            };
+            
+            status.innerText = "Discord PFP Linked";
             status.className = "text-lg font-bold text-brand";
         }
     }
