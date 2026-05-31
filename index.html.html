@@ -28,24 +28,19 @@
             <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
         </div>
 
-        <!-- Update form to allow file uploads (enctype) -->
         <form id="review-form" action="https://eofmrj2gswaolpg.m.pipedream.net" method="POST">
             <div class="space-y-8">
                 
-                <!-- Avatar Preview & Manual Upload -->
+                <!-- Avatar Preview -->
                 <div class="flex items-center gap-6 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
                     <div class="relative group">
                         <img id="avatar-preview" src="https://i.imgur.com/3Z6nZfR.png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10 object-cover">
-                        <!-- Manual Upload Overlay -->
-                        <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                            <i data-lucide="camera" class="w-6 h-6 text-white"></i>
-                            <input type="file" name="manual_avatar" accept="image/*" class="hidden" onchange="handleManualUpload(this)">
-                        </label>
                     </div>
                     <div>
                         <p class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Visual Identity</p>
-                        <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Info...</h3>
-                        <p class="text-[10px] text-gray-500 italic">Auto-fetches from ID, or click image to upload manually</p>
+                        <!-- THIS TEXT WILL CHANGE TO "DISCORD PFP LINKED" WHEN IT WORKS -->
+                        <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Discord ID...</h3>
+                        <p class="text-[10px] text-gray-500 italic">Enter your ID below to fetch your Discord photo</p>
                     </div>
                 </div>
 
@@ -63,9 +58,10 @@
                     </div>
                 </div>
 
+                <!-- DISCORD ID FIELD (This is what controls the photo now) -->
                 <div class="space-y-2">
-                    <label class="text-xs font-bold uppercase text-gray-400">Profile Link (Paste for instant photo)</label>
-                    <input type="url" name="profile_link" id="roblox-link" oninput="extractIdFromLink(this.value)" placeholder="https://www.roblox.com/users/4091549721/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand">
+                    <label class="text-xs font-bold uppercase text-brand">Discord User ID (FOR PHOTO)</label>
+                    <input type="text" name="discord_id" id="discord-id-input" oninput="updatePfp(this.value)" placeholder="Paste your ID here (e.g. 1297533282740600920)" class="w-full bg-white/[0.03] border-2 border-brand/20 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
@@ -80,7 +76,10 @@
                         </div>
                         <input type="hidden" name="stars" id="stars-value" value="0">
                     </div>
-                    <input type="text" name="discord" placeholder="Discord Tag" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold uppercase text-gray-400">Roblox Profile Link (Optional)</label>
+                        <input type="url" name="profile_link" placeholder="Roblox Profile URL" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none">
+                    </div>
                 </div>
 
                 <textarea name="message" rows="4" placeholder="Your Experience..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none resize-none" required></textarea>
@@ -93,45 +92,31 @@
 
         <div id="success-msg" class="hidden text-center mt-10 p-10 glass rounded-[2.5rem]">
             <h2 class="text-3xl font-bold">Review Sent!</h2>
-            <p class="text-gray-400 mt-2">Thank you for writing a review. Your review helps me improve :).</p>
+            <p class="text-gray-400 mt-2">Your Discord PFP will now show on the portfolio.</p>
         </div>
     </div>
 
 <script>
     lucide.createIcons();
 
-    // 1. IMPROVED AUTO-FETCH (Using Weserv Proxy - much stronger)
-    function updatePfp(userId) {
-        if (!userId) return;
+    // THIS IS THE NEW DISCORD FUNCTION
+    function updatePfp(discordId) {
+        if (!discordId || discordId.length < 15) return; 
         const previewImg = document.getElementById('avatar-preview');
         const status = document.getElementById('preview-status');
         
-        // This proxy service usually bypasses Roblox's restrictions
-        const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
-        const finalUrl = `https://images.weserv.nl/?url=${encodeURIComponent(robloxUrl)}&noprocess`;
+        // Use unavatar for Discord
+        previewImg.src = `https://unavatar.io/discord/${discordId}`;
+        
+        previewImg.onload = function() {
+            status.innerText = "Discord PFP Linked";
+            status.className = "text-lg font-bold text-brand";
+        };
 
-        previewImg.src = finalUrl;
-        status.innerText = "Identity Verified";
-        status.className = "text-lg font-bold text-brand";
-    }
-
-    // 2. MANUAL UPLOAD HANDLER (The "Other Way")
-    function handleManualUpload(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('avatar-preview').src = e.target.result;
-                const status = document.getElementById('preview-status');
-                status.innerText = "Manual Photo Added";
-                status.className = "text-lg font-bold text-brand";
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    function extractIdFromLink(url) {
-        const match = url.match(/users\/(\d+)/);
-        if (match && match[1]) updatePfp(match[1]);
+        previewImg.onerror = function() {
+            status.innerText = "Invalid Discord ID";
+            status.className = "text-lg font-bold text-red-500";
+        };
     }
 
     function setRating(n) {
@@ -151,43 +136,34 @@
         });
     }
 
-    // --- SUBMISSION FIX ---
- const form = document.getElementById('review-form');
+    const form = document.getElementById('review-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submit-btn');
+        const stars = document.getElementById('stars-value').value;
+        if (stars === "0") { alert("Please select a star rating!"); return; }
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('submit-btn');
-    const stars = document.getElementById('stars-value').value;
+        btn.innerText = "SENDING...";
+        btn.disabled = true;
 
-    if (stars === "0") { alert("Please select a star rating!"); return; }
-
-    btn.innerText = "SENDING...";
-    btn.disabled = true;
-
-    // Use the URL from your HTML action attribute
-    try {
-        const response = await fetch(form.action, {
-            method: 'POST',
-            body: new FormData(form)
-            // Removed the Formspree "Accept" header
-        });
-
-        // Pipedream returns a success even if it's a simple trigger
-        if (response.ok) {
-            form.classList.add('hidden');
-            document.getElementById('success-msg').classList.remove('hidden');
-        } else {
-            alert("Submission failed. Please check your Pipedream Trigger URL.");
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form)
+            });
+            if (response.ok) {
+                form.classList.add('hidden');
+                document.getElementById('success-msg').classList.remove('hidden');
+            } else {
+                alert("Submission failed.");
+                btn.innerText = "Submit Review";
+                btn.disabled = false;
+            }
+        } catch (error) {
             btn.innerText = "Submit Review";
             btn.disabled = false;
         }
-    } catch (error) {
-        console.error("Network error:", error);
-        alert("A network error occurred. Make sure your Pipedream workflow is 'Deployed'.");
-        btn.innerText = "Submit Review";
-        btn.disabled = false;
-    }
-});
+    });
 </script>
 </body>
 </html>
