@@ -10,16 +10,31 @@
     <script>
         tailwind.config = { 
             darkMode: 'class', 
-            theme: { extend: { colors: { brand: { DEFAULT: '#0099ff', dark: '#007acc', light: '#33adff' }, darker: '#050505' } } } 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        brand: { DEFAULT: '#0099ff', dark: '#007acc', light: '#33adff' },
+                        darker: '#050505'
+                    }
+                } 
+            } 
         }
     </script>
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; }
+        /* Fixes the "White Box" issue in the dropdown list */
+    select option {
+        background-color: #0a0a0a;
+        color: white;
+    }
+    /* Removes the default arrow in IE/Edge */
+    select::-ms-expand {
+        display: none;
+    }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; background-image: radial-gradient(circle at 0% 0%, rgba(0, 153, 255, 0.08) 0%, transparent 25%); }
         .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .star-btn svg { width: 24px; height: 24px; transition: all 0.2s; }
+        .star-inactive { color: #333 !important; fill: transparent !important; }
     </style>
 </head>
-
 <body class="flex items-center justify-center min-h-screen px-4 py-12">
 
     <div class="max-w-2xl w-full">
@@ -28,43 +43,36 @@
             <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
         </div>
 
-        <form id="review-form" action="https://eofmrj2gswaolpg.m.pipedream.net" method="POST">
+        <form id="review-form" action="https://formspree.io/f/mqakpneq" method="POST" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
             <div class="space-y-8">
                 
-                <!-- Avatar Preview -->
-                <div class="flex items-center gap-6 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
-                    <div class="relative group">
-                        <img id="avatar-preview" src="https://i.imgur.com/3Z6nZfR.png" class="w-20 h-20 rounded-2xl bg-darker border border-white/10 object-cover">
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-black text-brand uppercase tracking-widest mb-1">Visual Identity</p>
-                        <!-- THIS TEXT WILL CHANGE TO "DISCORD PFP LINKED" WHEN IT WORKS -->
-                        <h3 id="preview-status" class="text-lg font-bold text-gray-300">Awaiting Discord ID...</h3>
-                        <p class="text-[10px] text-gray-500 italic">Enter your ID below to fetch your Discord photo</p>
-                    </div>
-                </div>
-
+                <!-- 1 & 2: Username and Project Type -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Roblox Username</label>
-                        <input type="text" name="username" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                        <input type="text" name="username" id="username" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                     </div>
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Project Type</label>
                         <select name="type" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none">
-                            <option>Realistic Style</option>
-                            <option>High CTR Style</option>
+                            <option>Realism</option>
+                            <option>High CTR</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- DISCORD ID FIELD (This is what controls the photo now) -->
+                <!-- 3: Roblox Profile Link -->
                 <div class="space-y-2">
-                    <label class="text-xs font-bold uppercase text-brand">Discord User ID (FOR PHOTO)</label>
-                    <input type="text" name="discord_id" id="discord-id-input" oninput="updatePfp(this.value)" placeholder="Paste your ID here (e.g. 1297533282740600920)" class="w-full bg-white/[0.03] border-2 border-brand/20 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                    <label class="text-xs font-bold uppercase text-gray-400">Roblox Profile Link</label>
+                    <input type="url" name="profile_link" id="roblox-link" placeholder="https://www.roblox.com/users/4091549721/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                 </div>
 
+                <!-- 4 & 5: Discord and Star Rating -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold uppercase text-gray-400">Discord Tag</label>
+                        <input type="text" name="discord" placeholder="user#0000" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-brand">
+                    </div>
                     <div class="space-y-3">
                         <label class="text-xs font-bold uppercase text-gray-400">Star Rating</label>
                         <div id="star-container" class="flex gap-2">
@@ -74,15 +82,15 @@
                             <button type="button" onclick="setRating(4)" class="star-btn"><i data-lucide="star"></i></button>
                             <button type="button" onclick="setRating(5)" class="star-btn"><i data-lucide="star"></i></button>
                         </div>
-                        <input type="hidden" name="stars" id="stars-value" value="0">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-xs font-bold uppercase text-gray-400">Roblox Profile Link (Optional)</label>
-                        <input type="url" name="profile_link" placeholder="Roblox Profile URL" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none">
+                        <input type="hidden" name="stars" id="stars-value" value="">
                     </div>
                 </div>
 
-                <textarea name="message" rows="4" placeholder="Your Experience..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none resize-none" required></textarea>
+                <!-- 6: Experience -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold uppercase text-gray-400">Your Experience</label>
+                    <textarea name="message" rows="4" placeholder="Describe your experience working with us..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none resize-none focus:border-brand" required></textarea>
+                </div>
 
                 <button type="submit" id="submit-btn" class="w-full bg-brand py-5 rounded-2xl font-bold uppercase tracking-widest hover:bg-brand-light transition-all shadow-lg shadow-brand/20">
                     Submit Review
@@ -91,99 +99,68 @@
         </form>
 
         <div id="success-msg" class="hidden text-center mt-10 p-10 glass rounded-[2.5rem]">
-            <h2 class="text-3xl font-bold">Review Sent!</h2>
-            <p class="text-gray-400 mt-2">Your Discord PFP will now show on the portfolio.</p>
+            <h2 class="text-3xl font-bold text-brand">Review Sent!</h2>
+            <p class="text-gray-400 mt-2">Thank you for your feedback. We appreciate your support!</p>
         </div>
     </div>
 
-<script>
-    lucide.createIcons();
+    <script>
+        lucide.createIcons();
 
-async function updatePfp(discordId) {
-        if (!discordId || discordId.length < 15) return; 
-        const previewImg = document.getElementById('avatar-preview');
-        const status = document.getElementById('preview-status');
-        const robloxUser = document.getElementsByName('username')[0].value;
-        
-        status.innerText = "Connecting...";
-        status.className = "text-lg font-bold text-gray-400";
-
-        try {
-            // TRY SOURCE 1: Direct Discord Lookup
-            const response = await fetch(`https://discordlookup.mesalytic.org/v1/user/${discordId}`);
-            const data = await response.json();
-
-            if (data.avatar && data.avatar.url) {
-                previewImg.src = data.avatar.url;
-                status.innerText = "Discord PFP Linked";
-                status.className = "text-lg font-bold text-brand";
-            } else {
-                throw new Error("Discord Private");
-            }
-        } catch (error) {
-            // FALLBACK: If Discord fails, fetch the Roblox PFP using the Username entered
-            if (robloxUser) {
-                // Fetch Roblox User ID first
-                try {
-                    const robloxRes = await fetch(`https://images.weserv.nl/?url=https://www.roblox.com/headshot-thumbnail/image?userName=${robloxUser}&width=150&height=150&format=png`);
-                    previewImg.src = robloxRes.url;
-                    status.innerText = "Roblox PFP Linked";
-                    status.className = "text-lg font-bold text-sky-400";
-                } catch (e) {
-                    previewImg.src = `https://ui-avatars.com/api/?name=${robloxUser}&background=0099ff&color=fff`;
+        function setRating(n) {
+            document.getElementById('stars-value').value = n;
+            const starButtons = document.querySelectorAll('.star-btn');
+            starButtons.forEach((btn, index) => {
+                const icon = btn.querySelector('svg');
+                if (icon) {
+                    if (index < n) {
+                        icon.setAttribute('fill', '#ffb800');
+                        icon.setAttribute('stroke', '#ffb800');
+                        icon.style.color = '#ffb800';
+                    } else {
+                        icon.setAttribute('fill', 'none');
+                        icon.setAttribute('stroke', '#333');
+                        icon.style.color = '#333';
+                    }
                 }
-            } else {
-                previewImg.src = "https://i.imgur.com/3Z6nZfR.png";
-                status.innerText = "Enter Roblox Name";
-            }
+            });
         }
-    }
+        
+        // Default stars to 0 on load
+        setTimeout(() => setRating(0), 100);
 
-    function setRating(n) {
-        document.getElementById('stars-value').value = n;
-        const starButtons = document.querySelectorAll('.star-btn');
-        starButtons.forEach((btn, index) => {
-            const icon = btn.querySelector('svg');
-            if (icon) {
-                if (index < n) {
-                    icon.style.fill = "#ffb800";
-                    icon.style.stroke = "#ffb800";
+        const form = document.getElementById('review-form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const starsValue = document.getElementById('stars-value').value;
+            if (!starsValue || starsValue === "0") {
+                alert("Please select a star rating before submitting!");
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Sending...";
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.ok) {
+                    form.classList.add('hidden');
+                    document.getElementById('success-msg').classList.remove('hidden');
                 } else {
-                    icon.style.fill = "transparent";
-                    icon.style.stroke = "#333";
+                    alert("Submission failed.");
+                    btn.innerText = "Submit Review";
                 }
+            } catch (error) {
+                alert("An error occurred. Please try again.");
+                btn.innerText = "Submit Review";
             }
         });
-    }
-
-    const form = document.getElementById('review-form');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('submit-btn');
-        const stars = document.getElementById('stars-value').value;
-        if (stars === "0") { alert("Please select a star rating!"); return; }
-
-        btn.innerText = "SENDING...";
-        btn.disabled = true;
-
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form)
-            });
-            if (response.ok) {
-                form.classList.add('hidden');
-                document.getElementById('success-msg').classList.remove('hidden');
-            } else {
-                alert("Submission failed.");
-                btn.innerText = "Submit Review";
-                btn.disabled = false;
-            }
-        } catch (error) {
-            btn.innerText = "Submit Review";
-            btn.disabled = false;
-        }
-    });
-</script>
+    </script>
 </body>
 </html>
