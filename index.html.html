@@ -21,18 +21,9 @@
         }
     </script>
     <style>
-        /* Fixes the "White Box" issue in the dropdown list */
-    select option {
-        background-color: #0a0a0a;
-        color: white;
-    }
-    /* Removes the default arrow in IE/Edge */
-    select::-ms-expand {
-        display: none;
-    }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; background-image: radial-gradient(circle at 0% 0%, rgba(0, 153, 255, 0.08) 0%, transparent 25%); }
         .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .star-inactive { color: #333 !important; fill: transparent !important; }
+        select option { background-color: #0a0a0a; color: white; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen px-4 py-12">
@@ -43,35 +34,38 @@
             <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
         </div>
 
-        <form id="review-form" action="https://formspree.io/f/mqakpneq" method="POST" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
+        <!-- IMPORTANT: REPLACE THE URL BELOW WITH YOUR PIPEDREAM ENDPOINT -->
+        <form id="review-form" data-url="https://eofmrj2gswaolpg.m.pipedream.net" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
             <div class="space-y-8">
                 
-                <!-- 1 & 2: Username and Project Type -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Roblox Username</label>
-                        <input type="text" name="username" id="username" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                        <input type="text" id="username" placeholder="e.g. TrulyAzero" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                     </div>
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Project Type</label>
-                        <select name="type" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none">
-                            <option>Realism</option>
-                            <option>High CTR</option>
-                        </select>
+                        <div class="relative">
+                            <select id="type" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand appearance-none cursor-pointer">
+                                <option value="Realistic Style">Realistic Style</option>
+                                <option value="High CCU Style">High CCU Style</option>
+                            </select>
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 3: Roblox Profile Link -->
                 <div class="space-y-2">
                     <label class="text-xs font-bold uppercase text-gray-400">Roblox Profile Link</label>
-                    <input type="url" name="profile_link" id="roblox-link" placeholder="https://www.roblox.com/users/4091549721/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                    <input type="url" id="profile_link" placeholder="https://www.roblox.com/users/..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                 </div>
 
-                <!-- 4 & 5: Discord and Star Rating -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                     <div class="space-y-2">
                         <label class="text-xs font-bold uppercase text-gray-400">Discord Tag</label>
-                        <input type="text" name="discord" placeholder="user#0000" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-brand">
+                        <input type="text" id="discord" placeholder="user#0000" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none focus:border-brand" required>
                     </div>
                     <div class="space-y-3">
                         <label class="text-xs font-bold uppercase text-gray-400">Star Rating</label>
@@ -82,14 +76,13 @@
                             <button type="button" onclick="setRating(4)" class="star-btn"><i data-lucide="star"></i></button>
                             <button type="button" onclick="setRating(5)" class="star-btn"><i data-lucide="star"></i></button>
                         </div>
-                        <input type="hidden" name="stars" id="stars-value" value="">
+                        <input type="hidden" id="stars-value" value="0">
                     </div>
                 </div>
 
-                <!-- 6: Experience -->
                 <div class="space-y-2">
                     <label class="text-xs font-bold uppercase text-gray-400">Your Experience</label>
-                    <textarea name="message" rows="4" placeholder="Describe your experience working with us..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none resize-none focus:border-brand" required></textarea>
+                    <textarea id="message" rows="4" placeholder="How was the GFX?" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-5 outline-none resize-none focus:border-brand" required></textarea>
                 </div>
 
                 <button type="submit" id="submit-btn" class="w-full bg-brand py-5 rounded-2xl font-bold uppercase tracking-widest hover:bg-brand-light transition-all shadow-lg shadow-brand/20">
@@ -100,7 +93,7 @@
 
         <div id="success-msg" class="hidden text-center mt-10 p-10 glass rounded-[2.5rem]">
             <h2 class="text-3xl font-bold text-brand">Review Sent!</h2>
-            <p class="text-gray-400 mt-2">Thank you for your feedback. We appreciate your support!</p>
+            <p class="text-gray-400 mt-2">Thank you! Your feedback will be uploaded on the main website shortly.</p>
         </div>
     </div>
 
@@ -126,7 +119,6 @@
             });
         }
         
-        // Default stars to 0 on load
         setTimeout(() => setRating(0), 100);
 
         const form = document.getElementById('review-form');
@@ -134,31 +126,47 @@
             e.preventDefault();
 
             const starsValue = document.getElementById('stars-value').value;
-            if (!starsValue || starsValue === "0") {
-                alert("Please select a star rating before submitting!");
+            if (starsValue === "0") {
+                alert("Please select at least 1 star!");
                 return;
             }
 
             const btn = document.getElementById('submit-btn');
-            btn.innerText = "Sending...";
+            btn.innerText = "Sending Your Review...";
+            btn.disabled = true;
+
+            // Prepare the Data as JSON (Best for Pipedream)
+            const payload = {
+                username: document.getElementById('username').value,
+                project_type: document.getElementById('type').value,
+                profile_link: document.getElementById('profile_link').value,
+                discord: document.getElementById('discord').value,
+                stars: starsValue,
+                message: document.getElementById('message').value,
+                submitted_at: new Date().toISOString()
+            };
             
             try {
-                const response = await fetch(form.action, {
+                const pipedreamUrl = form.getAttribute('data-url');
+                
+                const response = await fetch(pipedreamUrl, {
                     method: 'POST',
-                    body: new FormData(form),
-                    headers: { 'Accept': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
+                // Pipedream usually returns 200 OK or 201 Created
                 if (response.ok) {
                     form.classList.add('hidden');
                     document.getElementById('success-msg').classList.remove('hidden');
                 } else {
-                    alert("Submission failed.");
-                    btn.innerText = "Submit Review";
+                    throw new Error("Pipedream rejected the request");
                 }
             } catch (error) {
-                alert("An error occurred. Please try again.");
+                console.error(error);
+                alert("Submission failed. Check if your Pipedream workflow is ACTIVE and that the URL is correct.");
                 btn.innerText = "Submit Review";
+                btn.disabled = false;
             }
         });
     </script>
