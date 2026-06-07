@@ -38,7 +38,7 @@
             <div class="flex justify-center mb-6">
                 <div id="avatar-container" class="w-24 h-24 rounded-full border-2 border-brand/30 bg-white/5 flex items-center justify-center overflow-hidden relative shadow-xl shadow-brand/10">
                     <i data-lucide="user" id="user-icon" class="w-10 h-10 text-gray-700"></i>
-                   <img id="avatar-img" referrerpolicy="no-referrer" class="hidden w-full h-full object-cover z-10" src="" alt="Avatar">
+                  <img id="avatar-img" referrerpolicy="no-referrer" class="hidden w-full h-full object-cover z-10" src="" alt="Avatar">
                     <div id="loading-spinner" class="hidden absolute inset-0 flex items-center justify-center bg-black/40 z-20">
                         <div class="loader-ring"></div>
                     </div>
@@ -129,56 +129,65 @@ function setRating(n) {
     });
 }
 
-// --- ROBLOX PFP ENGINE (BYPASS MODE) ---
+// --- ROBLOX PFP ENGINE ---
 const usernameField = document.getElementById('username');
 const profileLinkField = document.getElementById('profile_link');
 const avatarImg = document.getElementById('avatar-img');
 const userIcon = document.getElementById('user-icon');
 const spinner = document.getElementById('loading-spinner');
 
-// Using weserv.nl to cache and proxy the image (The ultimate CORS bypass)
-const IMAGE_PROXY = "https://images.weserv.nl/?url=";
-const API_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+// Use allorigins as the API proxy (much more reliable, no CORS issues)
+const API_PROXY = "https://api.allorigins.win/get?url=";
 
 function displayAvatar(userId) {
     if (!userId) return;
     spinner.classList.remove('hidden');
-    
-    // We construct the Roblox URL
-    const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
-    
-    // We wrap it in the weserv.nl proxy
-    const finalUrl = IMAGE_PROXY + encodeURIComponent(robloxUrl);
-    
-    console.log("Loading Proxied Image:", finalUrl);
-    
-    avatarImg.src = finalUrl;
-    
-    avatarImg.onload = () => {
-        avatarImg.classList.remove('hidden');
-        userIcon.classList.add('hidden');
-        spinner.classList.add('hidden');
-    };
-    
-    avatarImg.onerror = () => {
-        console.error("PFP failed to load via proxy.");
-        spinner.classList.add('hidden');
-        userIcon.classList.remove('hidden');
-    };
+
+    // Roblox thumbnail API — proxied through allorigins to bypass CORS
+    const robloxThumbUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`;
+    const proxiedUrl = API_PROXY + encodeURIComponent(robloxThumbUrl);
+
+    fetch(proxiedUrl)
+        .then(res => res.json())
+        .then(wrapper => {
+            const data = JSON.parse(wrapper.contents);
+            const imageUrl = data?.data?.[0]?.imageUrl;
+            if (imageUrl) {
+                // Use allorigins image proxy to serve the image too
+                avatarImg.src = "https://api.allorigins.win/raw?url=" + encodeURIComponent(imageUrl);
+                avatarImg.onload = () => {
+                    avatarImg.classList.remove('hidden');
+                    userIcon.classList.add('hidden');
+                    spinner.classList.add('hidden');
+                };
+                avatarImg.onerror = () => {
+                    spinner.classList.add('hidden');
+                    userIcon.classList.remove('hidden');
+                };
+            } else {
+                spinner.classList.add('hidden');
+            }
+        })
+        .catch(err => {
+            console.error("Avatar load error:", err);
+            spinner.classList.add('hidden');
+        });
 }
 
 async function getUserIdFromUsername(username) {
     spinner.classList.remove('hidden');
     const cleanName = username.trim();
-    
-    // Using a simple search query via Codetabs proxy
-    const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${cleanName}&limit=1`;
-    
-    try {
-        const response = await fetch(API_PROXY + encodeURIComponent(robloxApi));
-        const data = await response.json();
 
-        if (data.data && data.data.length > 0) {
+    // Use allorigins to proxy the Roblox users API
+    const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(cleanName)}&limit=1`;
+    const proxiedUrl = API_PROXY + encodeURIComponent(robloxApi);
+
+    try {
+        const response = await fetch(proxiedUrl);
+        const wrapper = await response.json();
+        const data = JSON.parse(wrapper.contents);
+
+        if (data?.data?.length > 0) {
             const userId = data.data[0].id;
             profileLinkField.value = `https://www.roblox.com/users/${userId}/profile`;
             displayAvatar(userId);
@@ -186,7 +195,7 @@ async function getUserIdFromUsername(username) {
             spinner.classList.add('hidden');
         }
     } catch (err) {
-        console.error("API Error:", err);
+        console.error("Username lookup error:", err);
         spinner.classList.add('hidden');
     }
 }
@@ -229,18 +238,17 @@ document.getElementById('review-form').addEventListener('submit', async (e) => {
     try {
         await fetch(e.target.dataset.url, {
             method: 'POST',
-            mode: 'no-cors', // Critical for sending data from Vercel to Pipedream
+            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
         e.target.classList.add('hidden');
         document.getElementById('success-msg').classList.remove('hidden');
     } catch (err) {
-        // Fallback for CORS blocks - data usually reaches Pipedream regardless
         e.target.classList.add('hidden');
         document.getElementById('success-msg').classList.remove('hidden');
     }
 });
-    </script>
+</script>
 </body>
 </html>
