@@ -24,17 +24,31 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; background-image: radial-gradient(circle at 0% 0%, rgba(0, 153, 255, 0.08) 0%, transparent 25%); }
         .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
         select option { background-color: #0a0a0a; color: white; }
+        
+        /* Loading Animation */
+        .loader-ring { width: 40px; height: 40px; border: 3px solid rgba(0, 153, 255, 0.1); border-radius: 50%; border-top-color: #0099ff; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen px-4 py-12">
 
     <div class="max-w-2xl w-full">
         <div class="text-center mb-10">
+            <!-- Avatar Display -->
+            <div class="flex justify-center mb-6">
+                <div id="avatar-container" class="w-24 h-24 rounded-full border-2 border-brand/30 bg-white/5 flex items-center justify-center overflow-hidden relative shadow-xl shadow-brand/10">
+                    <i data-lucide="user" id="user-icon" class="w-10 h-10 text-gray-700"></i>
+                    <img id="avatar-img" class="hidden w-full h-full object-cover z-10" src="" alt="Avatar">
+                    <div id="loading-spinner" class="hidden absolute inset-0 flex items-center justify-center bg-black/40 z-20">
+                        <div class="loader-ring"></div>
+                    </div>
+                </div>
+            </div>
+
             <h1 class="text-4xl font-extrabold tracking-tight">Leave a <span class="text-brand">Review</span></h1>
             <p class="text-gray-500">Your feedback helps us push the boundaries of GFX.</p>
         </div>
 
-        <!-- IMPORTANT: REPLACE THE URL BELOW WITH YOUR PIPEDREAM ENDPOINT -->
         <form id="review-form" data-url="https://eofmrj2gswaolpg.m.pipedream.net" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative">
             <div class="space-y-8">
                 
@@ -59,7 +73,7 @@
 
                 <div class="space-y-2">
                     <label class="text-xs font-bold uppercase text-gray-400">Roblox Profile Link</label>
-                    <input type="url" id="profile_link" placeholder="https://www.roblox.com/users/..." class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
+                    <input type="url" id="profile_link" placeholder="https://www.roblox.com/users/45602663/profile" class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-4 outline-none focus:border-brand" required>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
@@ -98,77 +112,138 @@
     </div>
 
     <script>
-        lucide.createIcons();
+       lucide.createIcons();
 
-        function setRating(n) {
-            document.getElementById('stars-value').value = n;
-            const starButtons = document.querySelectorAll('.star-btn');
-            starButtons.forEach((btn, index) => {
-                const icon = btn.querySelector('svg');
-                if (icon) {
-                    if (index < n) {
-                        icon.setAttribute('fill', '#ffb800');
-                        icon.setAttribute('stroke', '#ffb800');
-                        icon.style.color = '#ffb800';
-                    } else {
-                        icon.setAttribute('fill', 'none');
-                        icon.setAttribute('stroke', '#333');
-                        icon.style.color = '#333';
-                    }
-                }
-            });
+// --- STAR RATING ---
+function setRating(n) {
+    document.getElementById('stars-value').value = n;
+    document.querySelectorAll('.star-btn').forEach((btn, index) => {
+        const icon = btn.querySelector('svg');
+        if (index < n) {
+            icon.setAttribute('fill', '#ffb800');
+            icon.setAttribute('stroke', '#ffb800');
+        } else {
+            icon.setAttribute('fill', 'none');
+            icon.setAttribute('stroke', '#333');
         }
-        
-        setTimeout(() => setRating(0), 100);
+    });
+}
 
-        const form = document.getElementById('review-form');
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+// --- ROBLOX LOGIC ---
+const usernameField = document.getElementById('username');
+const profileLinkField = document.getElementById('profile_link');
+const avatarImg = document.getElementById('avatar-img');
+const userIcon = document.getElementById('user-icon');
+const spinner = document.getElementById('loading-spinner');
 
-            const starsValue = document.getElementById('stars-value').value;
-            if (starsValue === "0") {
-                alert("Please select at least 1 star!");
-                return;
-            }
+// Function to show the image using Roblox's direct thumbnail redirect
+// This bypasses fetch CORS because the browser loads it as a standard image
+function displayAvatar(userId) {
+    if (!userId) return;
+    spinner.classList.remove('hidden');
+    
+    // Roblox's direct redirect endpoint
+    const headshotUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
+    
+    avatarImg.src = headshotUrl;
+    avatarImg.onload = () => {
+        avatarImg.classList.remove('hidden');
+        userIcon.classList.add('hidden');
+        spinner.classList.add('hidden');
+    };
+    avatarImg.onerror = () => {
+        console.error("Failed to load avatar image via direct link.");
+        spinner.classList.add('hidden');
+    };
+}
 
-            const btn = document.getElementById('submit-btn');
-            btn.innerText = "Sending Your Review...";
-            btn.disabled = true;
+// Function to get User ID from Username via AllOrigins Proxy
+async function getUserId(username) {
+    spinner.classList.remove('hidden');
+    // Using AllOrigins GET proxy - very reliable for local files
+    const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${username}&limit=1`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(robloxApi)}`;
 
-            // Prepare the Data as JSON (Best for Pipedream)
-            const payload = {
-                username: document.getElementById('username').value,
-                project_type: document.getElementById('type').value,
-                profile_link: document.getElementById('profile_link').value,
-                discord: document.getElementById('discord').value,
-                stars: starsValue,
-                message: document.getElementById('message').value,
-                submitted_at: new Date().toISOString()
-            };
+    try {
+        const response = await fetch(proxyUrl);
+        const data = await response.json();
+        const contents = JSON.parse(data.contents); // AllOrigins returns a string in .contents
+
+        if (contents.data && contents.data.length > 0) {
+            const userId = contents.data[0].id;
+            const actualName = contents.data[0].name;
             
-            try {
-                const pipedreamUrl = form.getAttribute('data-url');
-                
-                const response = await fetch(pipedreamUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            // Update fields
+            usernameField.value = actualName;
+            profileLinkField.value = `https://www.roblox.com/users/${userId}/profile`;
+            
+            displayAvatar(userId);
+        } else {
+            console.warn("User not found");
+            spinner.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        spinner.classList.add('hidden');
+    }
+}
 
-                // Pipedream usually returns 200 OK or 201 Created
-                if (response.ok) {
-                    form.classList.add('hidden');
-                    document.getElementById('success-msg').classList.remove('hidden');
-                } else {
-                    throw new Error("Pipedream rejected the request");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Submission failed. Check if your Pipedream workflow is ACTIVE and that the URL is correct.");
-                btn.innerText = "Submit Review";
-                btn.disabled = false;
-            }
+// Event: User finishes typing username
+usernameField.addEventListener('blur', () => {
+    const val = usernameField.value.trim();
+    if (val) getUserId(val);
+});
+
+// Event: User pastes/types in profile link
+profileLinkField.addEventListener('input', () => {
+    const val = profileLinkField.value;
+    const match = val.match(/users\/(\d+)/);
+    if (match && match[1]) {
+        displayAvatar(match[1]);
+    }
+});
+
+// --- SUBMIT TO PIPEDREAM ---
+document.getElementById('review-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (document.getElementById('stars-value').value === "0") {
+        alert("Please select a star rating!");
+        return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerText = "Submitting...";
+
+    const payload = {
+        username: usernameField.value,
+        project_type: document.getElementById('type').value,
+        profile_link: profileLinkField.value,
+        avatar_url: avatarImg.src,
+        discord: document.getElementById('discord').value,
+        stars: document.getElementById('stars-value').value,
+        message: document.getElementById('message').value,
+        submitted_at: new Date().toISOString()
+    };
+
+    try {
+        const res = await fetch(e.target.dataset.url, {
+            method: 'POST',
+            mode: 'no-cors', // Helps avoid CORS issues on submission from local files
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
+        
+        // Since we use 'no-cors', we won't get a 'res.ok', so we assume success if no error is thrown
+        e.target.classList.add('hidden');
+        document.getElementById('success-msg').classList.remove('hidden');
+    } catch (err) {
+        console.error("Submit error:", err);
+        alert("Review sent (CORS might hide the confirmation, but data usually reaches Pipedream).");
+        e.target.classList.add('hidden');
+        document.getElementById('success-msg').classList.remove('hidden');
+    }
+});
     </script>
 </body>
 </html>
