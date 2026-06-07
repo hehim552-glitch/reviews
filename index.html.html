@@ -38,7 +38,7 @@
             <div class="flex justify-center mb-6">
                 <div id="avatar-container" class="w-24 h-24 rounded-full border-2 border-brand/30 bg-white/5 flex items-center justify-center overflow-hidden relative shadow-xl shadow-brand/10">
                     <i data-lucide="user" id="user-icon" class="w-10 h-10 text-gray-700"></i>
-                    <img id="avatar-img" class="hidden w-full h-full object-cover z-10" src="" alt="Avatar">
+                   <img id="avatar-img" referrerpolicy="no-referrer" class="hidden w-full h-full object-cover z-10" src="" alt="Avatar">
                     <div id="loading-spinner" class="hidden absolute inset-0 flex items-center justify-center bg-black/40 z-20">
                         <div class="loader-ring"></div>
                     </div>
@@ -112,51 +112,47 @@
     </div>
 
     <script>
-    lucide.createIcons();
+   lucide.createIcons();
 
-// --- 1. STAR RATING LOGIC ---
+// --- STAR RATING ---
 function setRating(n) {
     document.getElementById('stars-value').value = n;
-    const starButtons = document.querySelectorAll('.star-btn');
-    starButtons.forEach((btn, index) => {
+    document.querySelectorAll('.star-btn').forEach((btn, index) => {
         const icon = btn.querySelector('svg');
-        if (icon) {
-            if (index < n) {
-                icon.setAttribute('fill', '#ffb800');
-                icon.setAttribute('stroke', '#ffb800');
-                icon.style.color = '#ffb800';
-            } else {
-                icon.setAttribute('fill', 'none');
-                icon.setAttribute('stroke', '#333');
-                icon.style.color = '#333';
-            }
+        if (index < n) {
+            icon.setAttribute('fill', '#ffb800');
+            icon.setAttribute('stroke', '#ffb800');
+        } else {
+            icon.setAttribute('fill', 'none');
+            icon.setAttribute('stroke', '#333');
         }
     });
 }
-setTimeout(() => setRating(0), 100);
 
-// --- 2. ROBLOX AVATAR LOGIC (CORS BYPASS) ---
-const usernameInput = document.getElementById('username');
-const profileInput = document.getElementById('profile_link');
+// --- ROBLOX PFP ENGINE (BYPASS MODE) ---
+const usernameField = document.getElementById('username');
+const profileLinkField = document.getElementById('profile_link');
 const avatarImg = document.getElementById('avatar-img');
 const userIcon = document.getElementById('user-icon');
 const spinner = document.getElementById('loading-spinner');
 
-/**
- * THE SECRET SAUCE: Direct Image Loading
- * Roblox has a legacy endpoint that redirects directly to the image.
- * Browsers allow this in an <img> tag without any CORS proxy needed.
- */
+// Using weserv.nl to cache and proxy the image (The ultimate CORS bypass)
+const IMAGE_PROXY = "https://images.weserv.nl/?url=";
+const API_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+
 function displayAvatar(userId) {
     if (!userId) return;
-    console.log("Loading Avatar for ID:", userId);
-    
     spinner.classList.remove('hidden');
     
-    // This URL bypasses all proxy needs because the browser treats it as a standard media request
-    const directUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
+    // We construct the Roblox URL
+    const robloxUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
     
-    avatarImg.src = directUrl;
+    // We wrap it in the weserv.nl proxy
+    const finalUrl = IMAGE_PROXY + encodeURIComponent(robloxUrl);
+    
+    console.log("Loading Proxied Image:", finalUrl);
+    
+    avatarImg.src = finalUrl;
     
     avatarImg.onload = () => {
         avatarImg.classList.remove('hidden');
@@ -165,100 +161,83 @@ function displayAvatar(userId) {
     };
     
     avatarImg.onerror = () => {
-        console.error("Direct image load failed");
+        console.error("PFP failed to load via proxy.");
         spinner.classList.add('hidden');
+        userIcon.classList.remove('hidden');
     };
 }
 
-/**
- * USERNAME TO ID LOOKUP
- * We use the 'allorigins' proxy but with a 'search' GET request. 
- * Vercel allows this more easily than POST requests.
- */
-async function getUserId(username) {
+async function getUserIdFromUsername(username) {
     spinner.classList.remove('hidden');
     const cleanName = username.trim();
     
-    // We use a GET search instead of a POST request to be proxy-friendly
+    // Using a simple search query via Codetabs proxy
     const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${cleanName}&limit=1`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(robloxApi)}`;
-
+    
     try {
-        const response = await fetch(proxyUrl);
+        const response = await fetch(API_PROXY + encodeURIComponent(robloxApi));
         const data = await response.json();
-        const apiData = JSON.parse(data.contents); // AllOrigins wraps the result in 'contents'
 
-        if (apiData.data && apiData.data.length > 0) {
-            const userId = apiData.data[0].id;
-            console.log("Found User ID:", userId);
-            
-            // Auto-update the profile link field
-            profileInput.value = `https://www.roblox.com/users/${userId}/profile`;
-            
-            // Load the image
+        if (data.data && data.data.length > 0) {
+            const userId = data.data[0].id;
+            profileLinkField.value = `https://www.roblox.com/users/${userId}/profile`;
             displayAvatar(userId);
+        } else {
+            spinner.classList.add('hidden');
         }
     } catch (err) {
-        console.error("Lookup error:", err);
+        console.error("API Error:", err);
         spinner.classList.add('hidden');
     }
 }
 
-// Event: User finishes typing username
-usernameInput.addEventListener('blur', () => {
-    if (usernameInput.value.trim()) {
-        getUserId(usernameInput.value);
+// LISTENERS
+usernameField.addEventListener('blur', () => {
+    if (usernameField.value.trim()) {
+        getUserIdFromUsername(usernameField.value);
     }
 });
 
-// Event: User pastes a profile link
-profileInput.addEventListener('input', () => {
-    const url = profileInput.value;
-    const match = url.match(/users\/(\d+)/);
+profileLinkField.addEventListener('input', () => {
+    const val = profileLinkField.value;
+    const match = val.match(/users\/(\d+)/);
     if (match && match[1]) {
         displayAvatar(match[1]);
     }
 });
 
-// --- 3. FORM SUBMISSION ---
-const form = document.getElementById('review-form');
-form.addEventListener('submit', async (e) => {
+// FORM SUBMIT
+document.getElementById('review-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (document.getElementById('stars-value').value === "0") {
-        alert("Please select a star rating!");
-        return;
-    }
+    if (document.getElementById('stars-value').value === "0") return alert("Please select stars!");
 
     const btn = document.getElementById('submit-btn');
-    btn.innerText = "Sending Review...";
     btn.disabled = true;
+    btn.innerText = "Sending Review...";
 
     const payload = {
-        username: usernameInput.value,
+        username: usernameField.value,
         project_type: document.getElementById('type').value,
-        profile_link: profileInput.value,
-        avatar_url: avatarImg.src, // This sends the PFP URL to Pipedream
+        profile_link: profileLinkField.value,
+        avatar_url: avatarImg.src,
         discord: document.getElementById('discord').value,
         stars: document.getElementById('stars-value').value,
         message: document.getElementById('message').value,
         submitted_at: new Date().toISOString()
     };
-    
+
     try {
-        const response = await fetch(form.getAttribute('data-url'), {
+        await fetch(e.target.dataset.url, {
             method: 'POST',
-            mode: 'cors',
+            mode: 'no-cors', // Critical for sending data from Vercel to Pipedream
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
-        if (response.ok || response.status === 0) {
-            form.classList.add('hidden');
-            document.getElementById('success-msg').classList.remove('hidden');
-        }
-    } catch (error) {
-        // Fallback for CORS blocks on submission - data often still goes through
-        form.classList.add('hidden');
+        e.target.classList.add('hidden');
+        document.getElementById('success-msg').classList.remove('hidden');
+    } catch (err) {
+        // Fallback for CORS blocks - data usually reaches Pipedream regardless
+        e.target.classList.add('hidden');
         document.getElementById('success-msg').classList.remove('hidden');
     }
 });
