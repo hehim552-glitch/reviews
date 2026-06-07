@@ -136,42 +136,65 @@ const avatarImg = document.getElementById('avatar-img');
 const userIcon = document.getElementById('user-icon');
 const spinner = document.getElementById('loading-spinner');
 
-// Use allorigins as the API proxy (much more reliable, no CORS issues)
-const API_PROXY = "https://api.allorigins.win/get?url=";
+// Use corsproxy.io — more reliable than allorigins/codetabs
+const API_PROXY = "https://corsproxy.io/?";
 
 function displayAvatar(userId) {
     if (!userId) return;
     spinner.classList.remove('hidden');
 
-    // Roblox thumbnail API — proxied through allorigins to bypass CORS
-    const robloxThumbUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`;
-    const proxiedUrl = API_PROXY + encodeURIComponent(robloxThumbUrl);
+    // Try multiple image URL formats — use whichever loads
+    const attempts = [
+        `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`,
+        `https://tr.rbxcdn.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`,
+    ];
 
-    fetch(proxiedUrl)
-        .then(res => res.json())
-        .then(wrapper => {
-            const data = JSON.parse(wrapper.contents);
-            const imageUrl = data?.data?.[0]?.imageUrl;
-            if (imageUrl) {
-                // Use allorigins image proxy to serve the image too
-                avatarImg.src = "https://api.allorigins.win/raw?url=" + encodeURIComponent(imageUrl);
-                avatarImg.onload = () => {
-                    avatarImg.classList.remove('hidden');
-                    userIcon.classList.add('hidden');
-                    spinner.classList.add('hidden');
-                };
-                avatarImg.onerror = () => {
-                    spinner.classList.add('hidden');
-                    userIcon.classList.remove('hidden');
-                };
-            } else {
-                spinner.classList.add('hidden');
-            }
-        })
-        .catch(err => {
-            console.error("Avatar load error:", err);
+    let tried = 0;
+
+    function tryNext() {
+        if (tried >= attempts.length) {
             spinner.classList.add('hidden');
-        });
+            userIcon.classList.remove('hidden');
+            return;
+        }
+
+        // Use corsproxy.io to serve the image
+        avatarImg.src = "https://corsproxy.io/?" + encodeURIComponent(attempts[tried]);
+        tried++;
+
+        avatarImg.onload = () => {
+            avatarImg.classList.remove('hidden');
+            userIcon.classList.add('hidden');
+            spinner.classList.add('hidden');
+        };
+
+        avatarImg.onerror = tryNext;
+    }
+
+    tryNext();
+}
+
+async function getUserIdFromUsername(username) {
+    spinner.classList.remove('hidden');
+    const cleanName = username.trim();
+
+    const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(cleanName)}&limit=1`;
+
+    try {
+        const response = await fetch("https://corsproxy.io/?" + encodeURIComponent(robloxApi));
+        const data = await response.json();
+
+        if (data?.data?.length > 0) {
+            const userId = data.data[0].id;
+            profileLinkField.value = `https://www.roblox.com/users/${userId}/profile`;
+            displayAvatar(userId);
+        } else {
+            spinner.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error("Username lookup error:", err);
+        spinner.classList.add('hidden');
+    }
 }
 
 async function getUserIdFromUsername(username) {
