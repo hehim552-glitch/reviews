@@ -129,75 +129,84 @@ function setRating(n) {
     });
 }
 
-// --- ROBLOX LOGIC ---
+// --- ROBLOX PFP ENGINE ---
 const usernameField = document.getElementById('username');
 const profileLinkField = document.getElementById('profile_link');
 const avatarImg = document.getElementById('avatar-img');
 const userIcon = document.getElementById('user-icon');
 const spinner = document.getElementById('loading-spinner');
 
-// Function to show the image using Roblox's direct thumbnail redirect
-// This bypasses fetch CORS because the browser loads it as a standard image
+/**
+ * METHOD 1: LOADING THE IMAGE
+ * We use the 'headshot-thumbnail/image' endpoint.
+ * This works as a direct <img> src, so the browser does NOT block it.
+ */
 function displayAvatar(userId) {
     if (!userId) return;
+    console.log("Loading PFP for ID:", userId);
+    
     spinner.classList.remove('hidden');
     
-    // Roblox's direct redirect endpoint
-    const headshotUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
+    // Direct Roblox Redirect Link (Bypasses CORS because it's a standard image load)
+    const robloxPfpUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`;
     
-    avatarImg.src = headshotUrl;
+    avatarImg.src = robloxPfpUrl;
+    
     avatarImg.onload = () => {
         avatarImg.classList.remove('hidden');
         userIcon.classList.add('hidden');
         spinner.classList.add('hidden');
     };
+    
     avatarImg.onerror = () => {
-        console.error("Failed to load avatar image via direct link.");
+        console.error("Image failed to load");
         spinner.classList.add('hidden');
     };
 }
 
-// Function to get User ID from Username via AllOrigins Proxy
-async function getUserId(username) {
+/**
+ * METHOD 2: GETTING ID FROM USERNAME
+ * We use a different proxy (codetabs) which is much more stable for Vercel sites.
+ */
+async function getUserIdFromUsername(username) {
     spinner.classList.remove('hidden');
-    // Using AllOrigins GET proxy - very reliable for local files
-    const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${username}&limit=1`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(robloxApi)}`;
-
+    const cleanName = username.trim();
+    
+    // Using Codetabs proxy - works better with Vercel origins
+    const proxy = "https://api.codetabs.com/v1/proxy?quest=";
+    const robloxApi = `https://users.roblox.com/v1/users/search?keyword=${cleanName}&limit=1`;
+    
     try {
-        const response = await fetch(proxyUrl);
+        const response = await fetch(proxy + encodeURIComponent(robloxApi));
         const data = await response.json();
-        const contents = JSON.parse(data.contents); // AllOrigins returns a string in .contents
 
-        if (contents.data && contents.data.length > 0) {
-            const userId = contents.data[0].id;
-            const actualName = contents.data[0].name;
-            
-            // Update fields
-            usernameField.value = actualName;
-            profileLinkField.value = `https://www.roblox.com/users/${userId}/profile`;
-            
-            displayAvatar(userId);
+        if (data.data && data.data.length > 0) {
+            const id = data.data[0].id;
+            // Update the link field automatically
+            profileLinkField.value = `https://www.roblox.com/users/${id}/profile`;
+            displayAvatar(id);
         } else {
-            console.warn("User not found");
             spinner.classList.add('hidden');
         }
     } catch (err) {
-        console.error("Fetch Error:", err);
+        console.error("API Error:", err);
         spinner.classList.add('hidden');
     }
 }
 
-// Event: User finishes typing username
+// --- LISTENERS ---
+
+// When user stops typing in the username box
 usernameField.addEventListener('blur', () => {
-    const val = usernameField.value.trim();
-    if (val) getUserId(val);
+    if (usernameField.value.trim()) {
+        getUserIdFromUsername(usernameField.value);
+    }
 });
 
-// Event: User pastes/types in profile link
+// When user pastes/types a profile link
 profileLinkField.addEventListener('input', () => {
-    const val = profileLinkField.value;
-    const match = val.match(/users\/(\d+)/);
+    const url = profileLinkField.value;
+    const match = url.match(/users\/(\d+)/);
     if (match && match[1]) {
         displayAvatar(match[1]);
     }
@@ -206,14 +215,11 @@ profileLinkField.addEventListener('input', () => {
 // --- SUBMIT TO PIPEDREAM ---
 document.getElementById('review-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (document.getElementById('stars-value').value === "0") {
-        alert("Please select a star rating!");
-        return;
-    }
+    if (document.getElementById('stars-value').value === "0") return alert("Please select stars!");
 
     const btn = document.getElementById('submit-btn');
     btn.disabled = true;
-    btn.innerText = "Submitting...";
+    btn.innerText = "Sending Review...";
 
     const payload = {
         username: usernameField.value,
@@ -227,19 +233,14 @@ document.getElementById('review-form').addEventListener('submit', async (e) => {
     };
 
     try {
-        const res = await fetch(e.target.dataset.url, {
+        await fetch(e.target.dataset.url, {
             method: 'POST',
-            mode: 'no-cors', // Helps avoid CORS issues on submission from local files
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
-        // Since we use 'no-cors', we won't get a 'res.ok', so we assume success if no error is thrown
         e.target.classList.add('hidden');
         document.getElementById('success-msg').classList.remove('hidden');
     } catch (err) {
-        console.error("Submit error:", err);
-        alert("Review sent (CORS might hide the confirmation, but data usually reaches Pipedream).");
+        // Even if fetch throws a CORS error on the POST, the data usually reaches Pipedream
         e.target.classList.add('hidden');
         document.getElementById('success-msg').classList.remove('hidden');
     }
