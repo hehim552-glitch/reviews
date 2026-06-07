@@ -112,6 +112,7 @@
     </div>
 
     <script>
+        let currentAvatarUrl = '';
    lucide.createIcons();
 
 // --- STAR RATING ---
@@ -136,43 +137,7 @@ const avatarImg = document.getElementById('avatar-img');
 const userIcon = document.getElementById('user-icon');
 const spinner = document.getElementById('loading-spinner');
 
-// Use corsproxy.io — more reliable than allorigins/codetabs
-const API_PROXY = "https://corsproxy.io/?";
 
-function displayAvatar(userId) {
-    if (!userId) return;
-    spinner.classList.remove('hidden');
-
-    // Try multiple image URL formats — use whichever loads
-    const attempts = [
-        `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`,
-        `https://tr.rbxcdn.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`,
-    ];
-
-    let tried = 0;
-
-    function tryNext() {
-        if (tried >= attempts.length) {
-            spinner.classList.add('hidden');
-            userIcon.classList.remove('hidden');
-            return;
-        }
-
-        // Use corsproxy.io to serve the image
-        avatarImg.src = "https://corsproxy.io/?" + encodeURIComponent(attempts[tried]);
-        tried++;
-
-        avatarImg.onload = () => {
-            avatarImg.classList.remove('hidden');
-            userIcon.classList.add('hidden');
-            spinner.classList.add('hidden');
-        };
-
-        avatarImg.onerror = tryNext;
-    }
-
-    tryNext();
-}
 
 async function displayAvatar(userId) {
     if (!userId) return;
@@ -184,6 +149,7 @@ async function displayAvatar(userId) {
 
         if (data.imageUrl) {
             avatarImg.src = data.imageUrl;
+            currentAvatarUrl = data.imageUrl;
             avatarImg.onload = () => {
                 avatarImg.classList.remove('hidden');
                 userIcon.classList.add('hidden');
@@ -250,7 +216,8 @@ document.getElementById('review-form').addEventListener('submit', async (e) => {
         username: usernameField.value,
         project_type: document.getElementById('type').value,
         profile_link: profileLinkField.value,
-        avatar_url: avatarImg.src,
+        avatar_url: currentAvatarUrl,
+date: new Date().toLocaleDateString('en-US'),
         discord: document.getElementById('discord').value,
         stars: document.getElementById('stars-value').value,
         message: document.getElementById('message').value,
